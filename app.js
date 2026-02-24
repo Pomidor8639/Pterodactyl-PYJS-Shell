@@ -94,7 +94,21 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
+
+// Explicit fallback for root
+app.get('/', (req, res) => {
+  const indexPath = path.join(publicDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(500).send(
+      `<pre>public/index.html not found.\n\n__dirname: ${__dirname}\npublicDir: ${publicDir}\nexists: ${fs.existsSync(publicDir)}\ncontents: ${fs.existsSync(publicDir) ? fs.readdirSync(publicDir).join(', ') : 'N/A'}\nroot contents: ${fs.readdirSync(__dirname).join(', ')}</pre>`
+    );
+  }
+});
 
 // File upload config
 const storage = multer.diskStorage({

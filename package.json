@@ -1,0 +1,24 @@
+{
+  "name": "pterodactyl-pyjs-shell",
+  "version": "1.0.0",
+  "description": "Web-based Python & JavaScript shell for Pterodactyl containers with cyberpunk neon UI",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "keywords": [
+    "pterodactyl",
+    "shell",
+    "python",
+    "javascript",
+    "web-terminal"
+  ],
+  "author": "Pomidor8639",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

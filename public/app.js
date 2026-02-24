@@ -755,8 +755,8 @@ function initKeyboardShortcuts() {
 // ── System Info ──
 async function showSystemInfo() {
   try {
-    const res = await fetch('/api/system');
-    const data = await res.json();
+    const [sysRes, cfgRes] = await Promise.all([fetch('/api/system'), fetch('/api/config')]);
+    const data = { ...(await sysRes.json()), ...(await cfgRes.json()) };
 
     dom.modalBody.innerHTML = `
       <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${formatUptime(data.uptime)}</span></div>
@@ -767,7 +767,7 @@ async function showSystemInfo() {
       <div class="info-row"><span class="info-label">Heap Used</span><span class="info-value">${formatSize(data.memory.heapUsed)}</span></div>
       <div class="info-row"><span class="info-label">Heap Total</span><span class="info-value">${formatSize(data.memory.heapTotal)}</span></div>
       <div class="info-row"><span class="info-label">Working Dir</span><span class="info-value">${data.cwd}</span></div>
-      <div class="info-row"><span class="info-label">Port</span><span class="info-value">896</span></div>
+      <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port || '—'}</span></div>
     `;
 
     dom.modalOverlay.classList.remove('hidden');

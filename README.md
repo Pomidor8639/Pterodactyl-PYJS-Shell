@@ -27,17 +27,24 @@ A cyberpunk-styled web panel that lets you write, manage, and execute Python and
 # Install dependencies
 npm install
 
-# Start the server
+# Start the server (will ask for port on first run)
 node app.js
+
+# Or specify port directly
+node app.js 896
+node app.js --port=896
+
+# Or use environment variable
+SERVER_PORT=896 node app.js
 ```
 
-The panel will be available at `http://localhost:896`
+The port is saved to `config.json` and reused on next launch — just press Enter to keep it.
 
 ## Pterodactyl Setup
 
 1. Upload all files to your Pterodactyl server
-2. Set the startup command to `node app.js`
-3. Allocate port **896** to the server
+2. Set the startup command to `node app.js --port=896` (or just `node app.js` and enter port once)
+3. Allocate the corresponding port to the server
 4. Start the server from the panel
 
 ### Egg Configuration
@@ -89,6 +96,7 @@ Connect to `/ws` for real-time script execution:
 ```
 ├── app.js              # Main server (Express + WebSocket)
 ├── package.json        # Dependencies
+├── config.json         # Saved port & settings (auto-generated)
 ├── public/
 │   ├── index.html      # Web panel
 │   ├── style.css       # Cyberpunk neon theme

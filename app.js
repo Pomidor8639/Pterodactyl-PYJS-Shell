@@ -4,10 +4,84 @@ const { WebSocketServer } = require('ws');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const readline = require('readline');
 const multer = require('multer');
 
-const PORT = process.env.SERVER_PORT || 896;
+const CONFIG_PATH = path.join(__dirname, 'config.json');
 const SCRIPTS_DIR = path.join(__dirname, 'scripts');
+
+// ── Config: load / save ──
+function loadConfig() {
+  try {
+    if (fs.existsSync(CONFIG_PATH)) {
+      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    }
+  } catch { /* ignore corrupt config */ }
+  return {};
+}
+
+function saveConfig(cfg) {
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
+}
+
+// ── Ask port interactively ──
+function askPort() {
+  return new Promise((resolve) => {
+    const cfg = loadConfig();
+    const saved = cfg.port;
+
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+    const prompt = saved
+      ? `\x1b[36mEnter port \x1b[0m[\x1b[33m${saved}\x1b[0m — saved, press Enter to reuse]: `
+      : `\x1b[36mEnter port \x1b[0m[\x1b[33m896\x1b[0m]: `;
+
+    rl.question(prompt, (answer) => {
+      rl.close();
+      const input = answer.trim();
+      let port;
+
+      if (!input) {
+        port = saved || 896;
+      } else {
+        port = parseInt(input, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          console.log('\x1b[31mInvalid port. Using default 896.\x1b[0m');
+          port = 896;
+        }
+      }
+
+      // Save for next time
+      cfg.port = port;
+      saveConfig(cfg);
+
+      resolve(port);
+    });
+  });
+}
+
+// ── Resolve port: CLI arg > env > interactive prompt ──
+async function resolvePort() {
+  // 1. CLI argument: node app.js 8080  or  node app.js --port=8080
+  const args = process.argv.slice(2);
+  for (const arg of args) {
+    if (arg.startsWith('--port=')) {
+      const p = parseInt(arg.split('=')[1], 10);
+      if (p >= 1 && p <= 65535) { saveConfig({ ...loadConfig(), port: p }); return p; }
+    }
+    const p = parseInt(arg, 10);
+    if (p >= 1 && p <= 65535) { saveConfig({ ...loadConfig(), port: p }); return p; }
+  }
+
+  // 2. Environment variable
+  if (process.env.SERVER_PORT) {
+    const p = parseInt(process.env.SERVER_PORT, 10);
+    if (p >= 1 && p <= 65535) { saveConfig({ ...loadConfig(), port: p }); return p; }
+  }
+
+  // 3. Interactive prompt (shows saved port if exists)
+  return askPort();
+}
 
 // Ensure scripts directory exists
 if (!fs.existsSync(SCRIPTS_DIR)) {
@@ -278,11 +352,22 @@ p.on('exit', (c) => process.exit(c || 0));
 // ──────────────────────────────────────────────
 // Start
 // ──────────────────────────────────────────────
-server.listen(PORT, '0.0.0.0', () => {
+(async () => {
   console.log(`\n\x1b[36m╔══════════════════════════════════════════════╗\x1b[0m`);
   console.log(`\x1b[36m║\x1b[0m  \x1b[35m⚡ PYJS Shell v1.0.0\x1b[0m                        \x1b[36m║\x1b[0m`);
-  console.log(`\x1b[36m║\x1b[0m  \x1b[32m✓ Server running on port ${PORT}\x1b[0m               \x1b[36m║\x1b[0m`);
-  console.log(`\x1b[36m║\x1b[0m  \x1b[32m✓ Python & JavaScript execution ready\x1b[0m       \x1b[36m║\x1b[0m`);
-  console.log(`\x1b[36m║\x1b[0m  \x1b[32m✓ WebSocket terminal active\x1b[0m                 \x1b[36m║\x1b[0m`);
   console.log(`\x1b[36m╚══════════════════════════════════════════════╝\x1b[0m\n`);
-});
+
+  const PORT = await resolvePort();
+
+  // API: Get/set port config
+  app.get('/api/config', (req, res) => {
+    res.json({ port: PORT, config: loadConfig() });
+  });
+
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n\x1b[32m  ✓ Server running on port \x1b[33m${PORT}\x1b[0m`);
+    console.log(`\x1b[32m  ✓ Python & JavaScript execution ready\x1b[0m`);
+    console.log(`\x1b[32m  ✓ WebSocket terminal active\x1b[0m`);
+    console.log(`\x1b[32m  ✓ Port saved to config.json\x1b[0m\n`);
+  });
+})();

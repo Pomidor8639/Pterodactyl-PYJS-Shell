@@ -1,5 +1,6 @@
 node_modules/
 scripts/_temp_*
+config.json
 *.log
 .env
 .DS_Store
